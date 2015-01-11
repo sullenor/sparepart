@@ -1,0 +1,31 @@
+{
+  "name": "sparepart",
+  "version": "0.0.1",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "mocha --bail --colors --reporter spec --ui bdd test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/sullenor/sparepart.git"
+  },
+  "keywords": [
+    "bem",
+    "jsdx",
+    "teatime"
+  ],
+  "author": {
+    "name": "Alexey Litvinov",
+    "email": "iamhoneyboy@gmail.com"
+  },
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/sullenor/sparepart/issues"
+  },
+  "homepage": "https://github.com/sullenor/sparepart",
+  "devDependencies": {
+    "expect.js": "^0.3.1",
+    "mocha": "^2.1.0"
+  }
+}
