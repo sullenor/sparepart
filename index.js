@@ -1,30 +1,91 @@
 'use strict';
 
+var EventEmitter = require('events').EventEmitter;
+var fs = require('fs');
+var path = require('path');
+var util = require('util');
+
 /**
- * Возвращает функцию, которая позволяет вызывать конструтор без оператора new.
- * @todo  Подумать о добавление св-ва constructor
- * @param  {Function} constructor
- * @return {Function}
+ * @param  {string}   directory
+ * @param  {object}   [options]
+ * @param  {function} callback
  */
-function wrap(constructor) {
-  return function () {
-    var component = Object.create(constructor.prototype);
-    constructor.apply(component, arguments);
-    return component;
+module.exports = function sparepart(directory, options, callback) {
+  if (typeof options === 'function') {
+    callback = options;
+    options = {};
   }
+
+  new DirReader(directory, {}, 2, callback);
+};
+
+/**
+ * @param {string}   directory
+ * @param {object}   tree
+ * @param {number}   depth
+ * @param {function} callback
+ */
+function DirReader(directory, tree, depth, callback) {
+  var that = this;
+
+  EventEmitter.call(that);
+
+  that.once('error', function (err) {
+    callback(err);
+  });
+
+  that.on('done', function () {
+    if (that._stack !== 0) {
+      return;
+    }
+
+    callback(null, tree);
+  });
+
+  that.on('file', function (file) {
+    fs.stat(file, function (err, stats) {
+      if (err) {
+        return that.emit('error', err);
+      }
+
+      that._stack--;
+
+      if (stats.isDirectory()) {
+        tree[file] = {};
+
+        if (depth > 1) {
+          new DirReader(file, tree[file], --depth, function (err) {
+            if (err) {
+              return that.emit(err);
+            }
+
+            that._stack--;
+            that.emit('done');
+          });
+
+          that._stack++;
+        }
+      }
+
+      if (stats.isFile()) {
+        tree[file] = null;
+      }
+
+      that.emit('done');
+    });
+  });
+
+  fs.readdir(directory, function (err, files) {
+    if (err) {
+      return that.emit('error', err);
+    }
+
+    files.forEach(function (file) {
+      that.emit('file', path.join(directory, file));
+    });
+
+    that._stack = files.length;
+  });
 }
 
-/**
- * @param  {String} component
- * @return {Function|Object}
- */
-exports.create = function (component) {
-  var constructor = wrap(function () {});
-  var slice = Array.prototype.slice;
-
-  if (arguments.length > 1) {
-    return constructor.apply(null, slice.call(arguments, 1));
-  } else {
-    return constructor;
-  }
-};
+util.inherits(DirReader, EventEmitter);
