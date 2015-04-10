@@ -1,5 +1,6 @@
 'use strict';
 
+var _ = require('lodash');
 var EventEmitter = require('events').EventEmitter;
 var fs = require('fs');
 var path = require('path');
@@ -8,6 +9,7 @@ var util = require('util');
 /**
  * @param  {string}   directory
  * @param  {object}   [options]
+ * @param  {number}   [options.depth] Глубина обхода. По умолчанию, 2.
  * @param  {function} callback
  */
 module.exports = function sparepart(directory, options, callback) {
@@ -16,17 +18,21 @@ module.exports = function sparepart(directory, options, callback) {
     options = {};
   }
 
-  new DirReader(directory, {}, 2, callback);
+  _.defaults(options, {
+    depth: 2
+  });
+
+  new DirReader(directory, options.depth, callback);
 };
 
 /**
  * @param {string}   directory
- * @param {object}   tree
  * @param {number}   depth
  * @param {function} callback
  */
-function DirReader(directory, tree, depth, callback) {
+function DirReader(directory, depth, callback) {
   var that = this;
+  var tree = {};
 
   EventEmitter.call(that);
 
@@ -51,19 +57,20 @@ function DirReader(directory, tree, depth, callback) {
       that._stack--;
 
       if (stats.isDirectory()) {
-        tree[file] = {};
-
         if (depth > 1) {
-          new DirReader(file, tree[file], --depth, function (err) {
+          new DirReader(file, depth - 1, function (err, descendantTree) {
             if (err) {
               return that.emit(err);
             }
 
+            tree[file] = descendantTree;
             that._stack--;
             that.emit('done');
           });
 
           that._stack++;
+        } else {
+          tree[file] = {};
         }
       }
 
